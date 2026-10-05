@@ -1,1 +1,919 @@
 
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>وجه العمل - إدارة الحضور</title>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --green: #2ea043;
+    --green-dark: #238636;
+    --red: #da3633;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: #010409;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; color: #fff;
+  }
+  .page { display: none; padding: 16px; max-width: 520px; margin: 0 auto; }
+  .page.active { display: block; }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 8px;
+    text-align: center;
+  }
+  .stat .num { font-size: 24px; font-weight: 700; }
+  .stat .label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+  .btn-green { background: var(--green); }
+  .btn-green:active { background: var(--green-dark); }
+  .btn-red { background: var(--red); }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-sm {
+    padding: 10px 14px;
+    font-size: 14px;
+    width: auto;
+    display: inline-flex;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+  input, select {
+    width: 100%;
+    padding: 12px 14px;
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  video, canvas {
+    width: 100%;
+    max-width: 320px;
+    border-radius: 12px;
+    background: #000;
+    display: block;
+    margin: 0 auto 12px;
+  }
+  .camera-box { text-align: center; }
+  .employee-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .employee-item:last-child { border-bottom: none; }
+  .emp-avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #21262d;
+  }
+  .emp-info { flex: 1; }
+  .emp-name { font-weight: 600; }
+  .emp-id { font-size: 13px; color: var(--muted); }
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-in { background: #23863633; color: #3fb950; }
+  .badge-out { background: #da363333; color: #f85149; }
+  nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #010409;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0 14px;
+    z-index: 100;
+  }
+  nav button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  nav button.active { color: var(--green); }
+  nav svg { width: 24px; height: 24px; }
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 16px;
+  }
+  .modal.active { display: flex; }
+  .modal-content {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    width: 100%;
+    max-width: 380px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .status-msg {
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 14px;
+  }
+  .success { background: #23863633; color: #3fb950; }
+  .error { background: #da363333; color: #f85149; }
+  .loading { color: var(--accent); }
+  .export-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .export-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* جدول السجلات داخل التطبيق */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table.records-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 520px;
+  }
+  table.records-table th {
+    background: #21262d;
+    color: var(--muted);
+    font-weight: 600;
+    padding: 10px 8px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  table.records-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  table.records-table tr:last-child td { border-bottom: none; }
+
+  /* ===== تقرير PDF ===== */
+  #pdf-report {
+    display: none;
+    background: #fff;
+    color: #111;
+    padding: 24px;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    direction: rtl;
+  }
+  #pdf-report .pdf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #555;
+  }
+  #pdf-report h1 {
+    text-align: center;
+    font-size: 22px;
+    margin: 12px 0 20px;
+    color: #111;
+  }
+  #pdf-report .pdf-stats {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+  }
+  #pdf-report .pdf-stat {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px 16px;
+    text-align: center;
+    min-width: 90px;
+  }
+  #pdf-report .pdf-stat .val {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  #pdf-report .pdf-stat .lbl {
+    font-size: 11px;
+    color: #666;
+    margin-top: 2px;
+  }
+  #pdf-report table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+  #pdf-report th {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: 600;
+  }
+  #pdf-report td {
+    border: 1px solid #ddd;
+    padding: 7px 6px;
+    text-align: center;
+  }
+  #pdf-report .pdf-footer {
+    margin-top: 40px;
+    text-align: left;
+    font-size: 13px;
+  }
+  #pdf-report .sign-line {
+    border-top: 1px solid #333;
+    width: 160px;
+    margin-bottom: 4px;
+  }
+  @media print {
+    body * { visibility: hidden; }
+    #pdf-report, #pdf-report * { visibility: visible; }
+    #pdf-report {
+      display: block !important;
+      position: absolute;
+      left: 0; top: 0;
+      width: 100%;
+      padding: 15mm;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="avatar">م</div>
+    <span>وجه العمل</span>
+  </div>
+  <div style="font-size:13px;color:var(--muted)" id="today-date"></div>
+</header>
+
+<!-- الصفحة الرئيسية -->
+<div id="page-home" class="page active">
+  <h1>لوحة الحضور والانصراف</h1>
+  <p class="subtitle">سجل العمال بوجههم مباشرة من الكاميرا - سريع ودقيق وبدون لمس</p>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="num" id="stat-employees">0</div>
+      <div class="label">العمال المسجلون</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stat-present">0</div>
+      <div class="label">حاضرون اليوم</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stat-ops">0</div>
+      <div class="label">عمليات اليوم</div>
+    </div>
+  </div>
+
+  <button class="btn btn-green" onclick="startAttendance('in')">
+    ← تسجيل الدخول (حضور)
+  </button>
+  <p style="text-align:center;font-size:13px;color:var(--muted);margin:-6px 0 16px">افتح الكاميرا وسجل حضور العامل بمطابقة وجهه</p>
+
+  <button class="btn btn-red" onclick="startAttendance('out')">
+    تسجيل الخروج (انصراف) →
+  </button>
+  <p style="text-align:center;font-size:13px;color:var(--muted);margin:-6px 0 16px">سجل انصراف العامل بنفس الطريقة عبر الوجه</p>
+</div>
+
+<!-- صفحة العمال -->
+<div id="page-employees" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div>
+      <h1>إدارة العمال والموظفين</h1>
+      <p class="subtitle" style="margin:0">سجل العمال بالاسم والرقم والتقاط صورة الوجه للمطابقة</p>
+    </div>
+  </div>
+  <button class="btn btn-green btn-sm" onclick="openAddEmployee()" style="margin-bottom:16px">
+    + عامل جديد
+  </button>
+
+  <div id="employees-list" class="card" style="padding:0">
+    <div class="empty" id="no-employees">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      <p>لا يوجد عمال بعد</p>
+      <p style="font-size:13px;margin-top:6px">اضغط «عامل جديد» لتسجيل أول عامل والتقاط صورة وجهه</p>
+    </div>
+  </div>
+</div>
+
+<!-- صفحة السجلات -->
+<div id="page-records" class="page">
+  <h1>السجلات والتقارير</h1>
+  <p class="subtitle">كل عمليات الحضور والانصراف مع التصفية والتصدير</p>
+
+  <div class="export-grid">
+    <button class="export-btn" onclick="exportPDF()">PDF</button>
+    <button class="export-btn" onclick="exportExcel()">Excel</button>
+    <button class="export-btn" onclick="exportCSV()">نسخ CSV</button>
+    <button class="export-btn" onclick="shareRecords()">مشاركة</button>
+  </div>
+
+  <div class="card">
+    <label>تصفية السجلات</label>
+    <label>التاريخ</label>
+    <input type="date" id="filter-date" onchange="renderRecords()">
+    <label>العامل</label>
+    <select id="filter-employee" onchange="renderRecords()">
+      <option value="">كل العمال</option>
+    </select>
+    <label>النوع</label>
+    <select id="filter-type" onchange="renderRecords()">
+      <option value="">الكل</option>
+      <option value="in">حضور</option>
+      <option value="out">انصراف</option>
+    </select>
+  </div>
+
+  <div class="card" style="padding:0">
+    <div class="table-wrap">
+      <table class="records-table">
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>الرقم</th>
+            <th>الحالة</th>
+            <th>التاريخ</th>
+            <th>الوقت</th>
+            <th>الطريقة</th>
+          </tr>
+        </thead>
+        <tbody id="records-list">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- نافذة إضافة عامل -->
+<div class="modal" id="modal-add">
+  <div class="modal-content">
+    <h2 style="margin-bottom:16px">إضافة عامل جديد</h2>
+    <label>الاسم الكامل</label>
+    <input type="text" id="emp-name" placeholder="مثال: حمادة علي المهدي محمد">
+    <label>الرقم الوظيفي</label>
+    <input type="text" id="emp-id" placeholder="مثال: 123456">
+    
+    <div class="camera-box">
+      <video id="video-reg" autoplay muted playsinline></video>
+      <canvas id="canvas-reg" style="display:none"></canvas>
+      <div id="face-status">جاري تحميل نماذج التعرف على الوجه...</div>
+      <button class="btn btn-green" id="btn-capture" onclick="captureFace()" disabled>التقاط صورة الوجه</button>
+      <button class="btn btn-outline" onclick="stopCamera(); closeModal('modal-add')">إلغاء</button>
+    </div>
+    <div id="reg-msg"></div>
+  </div>
+</div>
+
+<!-- نافذة الحضور / الانصراف -->
+<div class="modal" id="modal-attend">
+  <div class="modal-content">
+    <h2 id="attend-title" style="margin-bottom:12px">تسجيل الحضور</h2>
+    <div class="camera-box">
+      <video id="video-attend" autoplay muted playsinline></video>
+      <canvas id="canvas-attend" style="display:none"></canvas>
+      <div id="attend-status" class="status-msg loading">افتح الكاميرا ووجّه وجهك...</div>
+      <button class="btn btn-outline" onclick="stopCamera(); closeModal('modal-attend')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- تقرير PDF (مخفي ويظهر عند الطباعة) -->
+<div id="pdf-report">
+  <div class="pdf-header">
+    <span>وجه العمل</span>
+    <span>كشف حضور رسمي</span>
+  </div>
+  <h1>كشف الحضور والانصراف</h1>
+  <div class="pdf-stats" id="pdf-stats"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>الاسم</th>
+        <th>الرقم</th>
+        <th>الحالة</th>
+        <th>التاريخ</th>
+        <th>الوقت</th>
+        <th>الطريقة</th>
+      </tr>
+    </thead>
+    <tbody id="pdf-tbody"></tbody>
+  </table>
+  <div class="pdf-footer">
+    <div class="sign-line"></div>
+    <div>توقيع المسؤول</div>
+    <div id="pdf-sign-date"></div>
+  </div>
+</div>
+
+<nav>
+  <button id="nav-home" class="active" onclick="showPage('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    الرئيسية
+  </button>
+  <button id="nav-employees" onclick="showPage('employees')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    العمال
+  </button>
+  <button id="nav-records" onclick="showPage('records')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    السجلات
+  </button>
+</nav>
+
+<script>
+// ========== البيانات ==========
+let employees = JSON.parse(localStorage.getItem('employees') || '[]');
+let records = JSON.parse(localStorage.getItem('records') || '[]');
+let modelsLoaded = false;
+let currentStream = null;
+let attendType = 'in';
+let detectionInterval = null;
+
+// ========== تحميل النماذج ==========
+async function loadModels() {
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/';
+  try {
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+    ]);
+    modelsLoaded = true;
+    const st = document.getElementById('face-status');
+    if (st) {
+      st.textContent = 'النماذج جاهزة ✓ - يمكنك التقاط الصورة';
+      document.getElementById('btn-capture').disabled = false;
+    }
+  } catch (e) {
+    const st = document.getElementById('face-status');
+    if (st) st.textContent = 'فشل تحميل النماذج. تحقق من الإنترنت';
+    console.error(e);
+  }
+}
+
+// ========== التنقل ==========
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'employees') renderEmployees();
+  if (name === 'records') renderRecords();
+  if (name === 'home') updateStats();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+  stopCamera();
+}
+
+// ========== الكاميرا ==========
+async function startCamera(videoId) {
+  stopCamera();
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    const video = document.getElementById(videoId);
+    video.srcObject = currentStream;
+    await video.play();
+    return true;
+  } catch (e) {
+    alert('لا يمكن الوصول إلى الكاميرا. تأكد من منح الإذن.');
+    return false;
+  }
+}
+
+function stopCamera() {
+  if (detectionInterval) {
+    clearInterval(detectionInterval);
+    detectionInterval = null;
+  }
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+  }
+}
+
+// ========== إضافة عامل ==========
+async function openAddEmployee() {
+  document.getElementById('emp-name').value = '';
+  document.getElementById('emp-id').value = '';
+  document.getElementById('reg-msg').innerHTML = '';
+  document.getElementById('modal-add').classList.add('active');
+  if (!modelsLoaded) await loadModels();
+  await startCamera('video-reg');
+}
+
+async function captureFace() {
+  const name = document.getElementById('emp-name').value.trim();
+  const id = document.getElementById('emp-id').value.trim();
+  if (!name || !id) {
+    document.getElementById('reg-msg').innerHTML = '<div class="status-msg error">أدخل الاسم والرقم</div>';
+    return;
+  }
+  if (employees.some(e => e.id === id)) {
+    document.getElementById('reg-msg').innerHTML = '<div class="status-msg error">الرقم موجود مسبقاً</div>';
+    return;
+  }
+
+  const video = document.getElementById('video-reg');
+  const canvas = document.getElementById('canvas-reg');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  document.getElementById('face-status').textContent = 'جاري استخراج بصمة الوجه...';
+  const detection = await faceapi
+    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions())
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+
+  if (!detection) {
+    document.getElementById('reg-msg').innerHTML = '<div class="status-msg error">لم يتم اكتشاف وجه. حاول مرة أخرى</div>';
+    document.getElementById('face-status').textContent = 'النماذج جاهزة ✓';
+    return;
+  }
+
+  const descriptor = Array.from(detection.descriptor);
+  const photo = canvas.toDataURL('image/jpeg', 0.7);
+
+  employees.push({ name, id, photo, descriptor });
+  localStorage.setItem('employees', JSON.stringify(employees));
+
+  document.getElementById('reg-msg').innerHTML = '<div class="status-msg success">تم تسجيل العامل بنجاح ✓</div>';
+  document.getElementById('face-status').textContent = 'تم الحفظ';
+  setTimeout(() => {
+    closeModal('modal-add');
+    renderEmployees();
+    updateStats();
+  }, 1200);
+}
+
+// ========== الحضور / الانصراف ==========
+async function startAttendance(type) {
+  attendType = type;
+  document.getElementById('attend-title').textContent = type === 'in' ? 'تسجيل الدخول (حضور)' : 'تسجيل الخروج (انصراف)';
+  document.getElementById('attend-status').className = 'status-msg loading';
+  document.getElementById('attend-status').textContent = 'جاري فتح الكاميرا...';
+  document.getElementById('modal-attend').classList.add('active');
+
+  if (!modelsLoaded) await loadModels();
+  const ok = await startCamera('video-attend');
+  if (!ok) return;
+
+  document.getElementById('attend-status').textContent = 'وجّه وجهك نحو الكاميرا...';
+
+  detectionInterval = setInterval(async () => {
+    const video = document.getElementById('video-attend');
+    if (video.readyState < 2) return;
+
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if (!detection) {
+      document.getElementById('attend-status').textContent = 'لم يتم اكتشاف وجه...';
+      return;
+    }
+
+    let bestMatch = null;
+    let bestDistance = 0.5;
+
+    for (const emp of employees) {
+      const dist = faceapi.euclideanDistance(detection.descriptor, emp.descriptor);
+      if (dist < bestDistance) {
+        bestDistance = dist;
+        bestMatch = emp;
+      }
+    }
+
+    if (bestMatch) {
+      clearInterval(detectionInterval);
+      detectionInterval = null;
+
+      const now = new Date();
+      const record = {
+        name: bestMatch.name,
+        id: bestMatch.id,
+        type: attendType,
+        time: now.toISOString(),
+        date: now.toISOString().slice(0, 10),          // 2026-10-05
+        timeStr: now.toTimeString().slice(0, 8),       // 08:34:57
+        method: 'وجه'
+      };
+      records.unshift(record);
+      localStorage.setItem('records', JSON.stringify(records));
+
+      document.getElementById('attend-status').className = 'status-msg success';
+      document.getElementById('attend-status').textContent =
+        `✓ تم ${attendType === 'in' ? 'الحضور' : 'الانصراف'}: ${bestMatch.name}`;
+
+      updateStats();
+      setTimeout(() => closeModal('modal-attend'), 2000);
+    } else {
+      document.getElementById('attend-status').textContent = 'وجه غير معروف... حاول مرة أخرى';
+    }
+  }, 1000);
+}
+
+// ========== العرض ==========
+function renderEmployees() {
+  const list = document.getElementById('employees-list');
+  const noEmp = document.getElementById('no-employees');
+  if (employees.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(noEmp);
+    noEmp.style.display = 'block';
+    return;
+  }
+  noEmp.style.display = 'none';
+  list.innerHTML = employees.map((e, i) => `
+    <div class="employee-item">
+      <img class="emp-avatar" src="${e.photo}" alt="">
+      <div class="emp-info">
+        <div class="emp-name">${e.name}</div>
+        <div class="emp-id">${e.id}</div>
+      </div>
+      <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)" onclick="deleteEmployee(${i})">حذف</button>
+    </div>
+  `).join('');
+}
+
+function deleteEmployee(index) {
+  if (confirm('هل تريد حذف هذا العامل؟')) {
+    employees.splice(index, 1);
+    localStorage.setItem('employees', JSON.stringify(employees));
+    renderEmployees();
+    updateStats();
+  }
+}
+
+function getFilteredRecords() {
+  const dateFilter = document.getElementById('filter-date').value;
+  const empFilter = document.getElementById('filter-employee').value;
+  const typeFilter = document.getElementById('filter-type').value;
+
+  let filtered = [...records];
+  if (dateFilter) filtered = filtered.filter(r => r.date === dateFilter);
+  if (empFilter) filtered = filtered.filter(r => r.id === empFilter);
+  if (typeFilter) filtered = filtered.filter(r => r.type === typeFilter);
+  return filtered;
+}
+
+function renderRecords() {
+  // تعبئة قائمة العمال في الفلتر
+  const sel = document.getElementById('filter-employee');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">كل العمال</option>' +
+    employees.map(e => `<option value="\( {e.id}"> \){e.name}</option>`).join('');
+  sel.value = current;
+
+  const filtered = getFilteredRecords();
+  const tbody = document.getElementById('records-list');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">لا توجد سجلات</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td>${r.id}</td>
+      <td><span class="badge \( {r.type === 'in' ? 'badge-in' : 'badge-out'}"> \){r.type === 'in' ? 'حضور' : 'انصراف'}</span></td>
+      <td>${r.date}</td>
+      <td>${r.timeStr}</td>
+      <td>${r.method || 'وجه'}</td>
+    </tr>
+  `).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-employees').textContent = employees.length;
+  const today = new Date().toISOString().slice(0, 10);
+  const todayRecords = records.filter(r => r.date === today);
+  document.getElementById('stat-ops').textContent = todayRecords.length;
+  const presentIds = new Set(todayRecords.filter(r => r.type === 'in').map(r => r.id));
+  document.getElementById('stat-present').textContent = presentIds.size;
+}
+
+// ========== التصدير ==========
+function exportCSV() {
+  const data = getFilteredRecords();
+  if (data.length === 0) return alert('لا توجد سجلات');
+
+  let csv = 'الاسم,الرقم,الحالة,التاريخ,الوقت,الطريقة\n';
+  data.forEach(r => {
+    csv += `"\( {r.name}"," \){r.id}","\( {r.type === 'in' ? 'حضور' : 'انصراف'}"," \){r.date}","\( {r.timeStr}"," \){r.method || 'وجه'}"\n`;
+  });
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `attendance-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportExcel() {
+  // نفس CSV لكن بامتداد .xls ليفتح مباشرة في Excel
+  const data = getFilteredRecords();
+  if (data.length === 0) return alert('لا توجد سجلات');
+
+  let csv = 'الاسم\tالرقم\tالحالة\tالتاريخ\tالوقت\tالطريقة\n';
+  data.forEach(r => {
+    csv += `\( {r.name}\t \){r.id}\t\( {r.type === 'in' ? 'حضور' : 'انصراف'}\t \){r.date}\t\( {r.timeStr}\t \){r.method || 'وجه'}\n`;
+  });
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `attendance-${new Date().toISOString().slice(0,10)}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPDF() {
+  const data = getFilteredRecords();
+  if (data.length === 0) return alert('لا توجد سجلات');
+
+  // إحصائيات
+  const total = data.length;
+  const ins = data.filter(r => r.type === 'in').length;
+  const outs = data.filter(r => r.type === 'out').length;
+  const issueDate = new Date().toLocaleDateString('en-GB'); // 05/10/2026
+
+  document.getElementById('pdf-stats').innerHTML = `
+    <div class="pdf-stat" style="border-top:3px solid #f1c40f">
+      <div class="val">${issueDate}</div>
+      <div class="lbl">تاريخ الإصدار</div>
+    </div>
+    <div class="pdf-stat" style="border-top:3px solid #e74c3c">
+      <div class="val">${outs}</div>
+      <div class="lbl">عمليات الانصراف</div>
+    </div>
+    <div class="pdf-stat" style="border-top:3px solid #2ecc71">
+      <div class="val">${ins}</div>
+      <div class="lbl">عمليات الحضور</div>
+    </div>
+    <div class="pdf-stat" style="border-top:3px solid #3498db">
+      <div class="val">${total}</div>
+      <div class="lbl">عدد العمليات</div>
+    </div>
+  `;
+
+  document.getElementById('pdf-tbody').innerHTML = data.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td>${r.id}</td>
+      <td>${r.type === 'in' ? 'حضور' : 'انصراف'}</td>
+      <td>${r.date}</td>
+      <td>${r.timeStr}</td>
+      <td>${r.method || 'وجه'}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('pdf-sign-date').textContent = issueDate;
+
+  // طباعة
+  window.print();
+}
+
+function shareRecords() {
+  if (navigator.share) {
+    navigator.share({
+      title: 'سجلات الحضور',
+      text: `عدد السجلات: ${records.length}`
+    });
+  } else {
+    alert('المشاركة غير مدعومة في هذا المتصفح');
+  }
+}
+
+// ========== التهيئة ==========
+document.getElementById('today-date').textContent = new Date().toLocaleDateString('ar-EG', {
+  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+});
+updateStats();
+loadModels();
+</script>
+</body>
+</html>
+
+
+
+
+
